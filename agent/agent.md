@@ -1,161 +1,142 @@
 # Outline
 Daemon runs as systemd service -> Userspace program monitors Daemon -> When daemon encounters event pushes it to userspace program -> userspace processes ad send JSON object to HUB
 
-Got it ✅
-You want **Person C** to focus on the **agent side**, where the daemon runs as a `systemd` service and communicates with a userspace program that handles the hub communication. Here’s the **full detailed work description for Person C**:
 
----
-## Implement The below except JSON logic and Authentication part 
+# **Person C – Agent Development (Daemon + Event Collection Only)**
 
-## **Person C – Agent Development (Daemon + Userspace Program)**
+## 🎯 **Responsibilities**
 
-### **Responsibilities**
+1. **Agent Daemon (systemd Service)**
 
-1. **Daemon Service (Background Monitoring)**
+   * Runs in background as `systemd` service.
+   * Monitors **event sources**:
 
-   * Implement a `systemd` service (`agent-daemon`) that:
+     * **Network connections** (e.g. new socket connect events).
+     * **File system changes** (via `watchdog`, configurable folders).
+   * For each event, builds a **JSON object**:
 
-     * Runs continuously in the background.
-     * Monitors events:
+     ```json
+     {
+       "device_id": "agent-123",
+       "type": "network",
+       "details": {
+         "src_ip": "1.1.1.1",
+         "dst_port": 22,
+         "timestamp": "2025-09-13T12:34:56Z"
+       }
+     }
+     ```
+   * Calls a **dummy helper function** (imported from Person B’s module) to “send” the JSON.
 
-       * **Network events** → detect new connections (`ss`, `netstat`, or `psutil` sockets).
-       * **File events** → using `watchdog` for configured folders.
-     * For each event:
+     * For now → just prints/logs the JSON.
+     * Later → Person B will implement actual **mTLS + REST POST** in that helper.
 
-       * Build a structured event payload (e.g. `{type: "network", details: {...}, timestamp: ...}`).
-       * Push the event to a **userspace program** via:
+2. **Event Flow**
 
-         * **Local IPC** (Unix domain socket, named pipe, or ZeroMQ).
-
-2. **Userspace Program (Event Processor + Hub Client)**
-
-   * Runs alongside the daemon (started by the user, not systemd).
-   * Responsibilities:
-
-     * Receive events from the daemon.
-     * Perform light preprocessing (add hostname, format into JSON).
-     * Send JSON payload to Hub via **REST API** (endpoints defined by Person B).
-     * Handle retries if hub is unavailable (basic queue or local file buffer).
+   * Event occurs → Daemon captures → Formats JSON → Calls `hub_client.send_event(event_json)` (dummy).
+   * This means **no networking, no TLS, no retries** in C’s code.
 
 3. **Configuration Management**
 
-   * A single `config.yaml` for the agent:
+   * Agent reads `config.yaml` for:
 
      * Folders to monitor.
-     * Optional network ports or filters.
-     * Hub URL and TLS certificate paths.
-   * Daemon should reload config on `SIGHUP` (systemd supports `ExecReload`).
-
-4. **Packaging & Deployment**
-
-   * Provide:
-
-     * `agent.service` systemd unit file (for daemon).
-     * CLI instructions for installing daemon (`systemctl enable --now agent.service`).
-     * Simple installer script for dependencies (`pip install -r requirements.txt`).
-   * Document **how to copy certificates** (provisioned manually as per Person B’s mTLS setup).
+     * Ports to watch.
+     * Device ID.
+   * Daemon should reload config on restart (systemd handles service restart).
 
 ---
 
-### **Deliverables**
+## 📦 **Deliverables**
 
-1. **Daemon Implementation (`daemon.py`)**
+### 1. **Daemon Service (`daemon.py`)**
 
-   * Runs as systemd service.
-   * Monitors:
+* Monitors:
 
-     * File system (via `watchdog`).
-     * Network connections (via `psutil.net_connections()` or `ss` wrapper).
-   * Sends events to userspace over **Unix socket**.
+  * File system paths (using `watchdog` observers).
+  * Network connections (polling via `psutil` or `ss` wrapper).
+* Formats events into JSON dicts.
+* Calls:
 
-2. **Userspace Program (`agent_client.py`)**
+  ```python
+  from hub_client import send_event
 
-   * Connects to daemon’s socket.
-   * Reads events, enriches them (hostname, device\_id).
-   * Converts to JSON.
-   * Sends to Hub’s REST endpoint (`/events`) with mTLS.
+  send_event(event_json)
+  ```
 
-3. **Shared Library (`client_funcs.py`)**
+### 2. **Dummy Helper Module (`hub_client.py`)**
 
-   * Helper functions for:
+* Exposes placeholder functions for Person B to later implement:
 
-     * `send_event(event_obj)` → send JSON to hub.
-     * `read_config()` → parse `config.yaml`.
-     * Logging wrapper.
+  ```python
+  def send_event(event_json: dict):
+      # Dummy implementation
+      print("[DEBUG] Event ready to send:", event_json)
+  ```
 
-4. **Config File (`config.yaml`)**
-   Example:
+### 3. **Config File (`config.yaml`)**
 
-   ```yaml
-   hub_url: "https://hub.example.com:8443"
-   cert_path: "/etc/agent/certs/agent.crt"
-   key_path: "/etc/agent/certs/agent.key"
-   ca_cert: "/etc/agent/certs/ca.crt"
+Example:
 
-   network_monitor:
-     enabled: true
-     ports: [22, 80, 443]
+```yaml
+device_id: "agent-123"
 
-   file_monitor:
-     enabled: true
-     paths:
-       - /mnt/shared
-       - /var/log/shared
-   ```
+network_monitor:
+  enabled: true
+  ports: [22, 80]
 
-5. **Systemd Unit File (`agent.service`)**
-   Example:
+file_monitor:
+  enabled: true
+  paths:
+    - /mnt/shared
+    - /var/log/shared
+```
 
-   ```ini
-   [Unit]
-   Description=IDS Agent Daemon
-   After=network.target
+### 4. **Systemd Unit File (`agent.service`)**
 
-   [Service]
-   ExecStart=/usr/bin/python3 /opt/agent/daemon.py
-   Restart=always
-   User=root
-   WorkingDirectory=/opt/agent
-   Environment="PYTHONUNBUFFERED=1"
+```ini
+[Unit]
+Description=IDS Agent Daemon
+After=network.target
 
-   [Install]
-   WantedBy=multi-user.target
-   ```
+[Service]
+ExecStart=/usr/bin/python3 /opt/agent/daemon.py
+Restart=always
+User=root
+WorkingDirectory=/opt/agent
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 5. **Logging**
+
+* Log to syslog (`systemd` captures).
+* Events that fail JSON formatting → log as warnings.
 
 ---
 
-### **What Person C Can Expect Already in Place**
+## ✅ **What Person C Can Expect Already in Place**
 
 * **From Person B:**
 
-  * Hub REST API endpoints (`/events`, `/devices`, `/status`) with mTLS enabled.
-  * Device registration mechanism (manual provisioning).
-  * DB schema ready to receive events (`events` table).
-  * Certificates provisioned per device.
-
+  * Eventually, `hub_client.send_event()` will be fully implemented (mTLS + REST).
+  * Certificates & provisioning mechanism will be handled externally.
 * **From Person A:**
 
-  * Nothing initially (dashboard is independent, will just visualize what Person B stores).
+  * Nothing needed (dashboard consumes DB later).
 
 ---
 
-### **Stretch Goals (optional, nice-to-have)**
+## ⚡ **Stretch Goals for C**
 
-* Implement a **local cache** so if hub is unreachable, events are stored on disk and retried later.
-* Add **lightweight anomaly tagging** (e.g. >5 SSH failures in 1 min → tag as suspicious before sending).
-* Provide **uninstall script** (stop service, clean configs).
-
----
-
-👉 Person C’s work is **mostly endpoint agent design**, requiring skills in:
-
-* Python system programming (daemonizing, IPC).
-* Systemd service handling.
-* Watchdog & psutil libraries.
-* REST client with mTLS (`requests` library).
+* Add basic **rate limiting** (avoid flooding with identical events).
+* Implement **light enrichment** (e.g. reverse DNS lookup for IPs).
+* Add **local file cache** to save JSONs if helper is unavailable (optional, Person B might prefer to own retries).
 
 ---
 
-Would you like me to **write a minimal proof-of-concept daemon + userspace client (with Unix socket communication)** so Person C can test end-to-end with Person B’s mock `/events` API?
+👉 This way Person C’s daemon is **fully testable right now** (prints JSON), and later Person B just **drops in the real `hub_client.py`** without any rewrite.
 
-
+Would you like me to sketch a **minimal working prototype of `daemon.py` + dummy `hub_client.py`** so Person C can run it right away?
