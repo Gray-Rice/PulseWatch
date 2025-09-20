@@ -28,12 +28,11 @@ class NetworkEvent(db.Model):
     )
 
     direction = db.Column(db.String(10))   # ingress / egress
-    ip = db.Column(db.String(45))          # IPv4/IPv6
+    src_ip = db.Column(db.String(45))          # IPv4/IPv6
+    des_ip = db.Column(db.String(45)) 
     port = db.Column(db.Integer)
+    protocol = db.Column(dg.String(10))
     action = db.Column(db.String(50))      # connect / disconnect / attempt
-    rating = db.Column(db.Integer, default=0)  # 0=low, 1=medium, 2=high
-    extra = db.Column(db.JSON)             # flexible metadata
-
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 # -------------------
@@ -51,7 +50,6 @@ class FileEvent(db.Model):
 
     file_path = db.Column(db.Text, nullable=False)
     action = db.Column(db.String(50))      # create / read / modify / delete
-    rating = db.Column(db.Integer, default=0)  # 0=low, 1=medium, 2=high
     extra = db.Column(db.JSON)             # flexible metadata
 
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)

@@ -41,10 +41,11 @@ def receive_event():
         event = NetworkEvent(
             device_id=device_id,
             direction=payload.get("direction"),
-            ip=payload.get("ip"),
+            src_ip=payload.get("src_ip"),
+            des_ip=payload.get("des_ip"),
             port=payload.get("port"),
             action=payload.get("action"),
-            rating=payload.get("rating", 0),
+            protocol=payload.get("protocol"),
             extra=payload.get("extra"),
             timestamp=datetime.utcnow()
         )
@@ -53,7 +54,6 @@ def receive_event():
             device_id=device_id,
             file_path=payload.get("file_path"),
             action=payload.get("action"),
-            rating=payload.get("rating", 0),
             extra=payload.get("extra"),
             timestamp=datetime.utcnow()
         )
