@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify, current_app
 from app.models import Device
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 import base64, json
-from datetime import datetime
+from datetime import datetime, timezone
 
 events_bp = Blueprint("events", __name__)
 
@@ -51,7 +51,8 @@ def receive_event():
 
     # 5. Ensure device_id and timestamp are set
     payload["device_id"] = device_id
-    payload["timestamp"] = datetime.utcnow().isoformat()
+    payload["device_name"]= device.name
+    payload["timestamp"] = datetime.now(timezone.utc)
 
     # 6. Index to Elasticsearch
     es = current_app.elasticsearch

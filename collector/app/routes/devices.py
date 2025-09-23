@@ -36,5 +36,6 @@ def add_device():
     return jsonify({
         "status": "device added",
         "device_id": device_id,
+        "name": device.name,
         "api_key": api_key
     }), 201
