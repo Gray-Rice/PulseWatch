@@ -7,8 +7,8 @@ from app.routes.devices import devices_bp
 from elasticsearch import Elasticsearch
 import os
 
-def create_app(config_path=None):
-    app = Flask(__name__)
+def create_app(config_path=None,template_folder=None):
+    app = Flask(__name__,template_folder=template_folder)
 
     # -----------------------------
     # Postgres config for devices

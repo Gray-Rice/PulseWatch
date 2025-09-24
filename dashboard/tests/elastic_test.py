@@ -22,12 +22,17 @@ with app.app_context():
         raise Exception("Elasticsearch not ready")
 
     # Test CRUD
-    doc = {"device_id": "test01", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "123", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "124", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "125", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "126", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "127", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "128", "event_type": "network", "message": "Test event"}
     res = es.index(index="network-events", document=doc)
     print("Indexed:", res)
 
-    retrieved = es.get(index="network-events", id=res["_id"])
-    print("Retrieved:", retrieved["_source"])
+    # retrieved = es.get(index="network-events", id=res["_id"])
+    # print("Retrieved:", retrieved["_source"])
 
-    es.delete(index="network-events", id=res["_id"])
-    print("Deleted document")
+    # es.delete(index="network-events", id=res["_id"])
+    # print("Deleted document")

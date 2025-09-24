@@ -45,3 +45,18 @@ def send_event(hub_url, device_id, api_key, payload_dict, timeout=10):
         print(f"[ERROR] Failed to send event: {e}")
         return None
 
+def create_device(device_id, device_name):
+    """
+    Generate config and certs for a new device.
+    Replace this with Person B's real implementation.
+    """
+    config = {
+        "device_id": device_id,
+        "device_name": device_name,
+        "hub_url": "https://hub.example.com"
+    }
+    certs = {
+        "cert": f"-----BEGIN CERTIFICATE-----\n{device_id}-CERT\n-----END CERTIFICATE-----",
+        "key": f"-----BEGIN PRIVATE KEY-----\n{device_id}-KEY\n-----END PRIVATE KEY-----"
+    }
+    return config, certs
