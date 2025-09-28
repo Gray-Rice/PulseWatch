@@ -4,3 +4,4 @@ config.yaml
 __pycache__
 agent.yaml
 events/
+test_server.py

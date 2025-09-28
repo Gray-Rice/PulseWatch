@@ -1,5 +1,3 @@
-# helper.py
-
 import json
 import base64
 import os

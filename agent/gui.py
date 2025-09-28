@@ -33,8 +33,8 @@ class IDSAgentUI(QWidget):
         self.tabs = QTabWidget()
         self.logs_tab = QWidget()
         self.config_tab = QWidget()
-        self.tabs.addTab(self.logs_tab, "Daemon / Logs")
         self.tabs.addTab(self.config_tab, "Config")
+        self.tabs.addTab(self.logs_tab, "Daemon / Logs")
         main_layout.addWidget(self.tabs)
 
         # Initialize tabs
@@ -56,8 +56,10 @@ class IDSAgentUI(QWidget):
         form_layout = QFormLayout()
 
         # Device ID and API key
+        hub_ip = self.config.get("hub_ip")
         device_id = self.config.get("device_id", "agent-123")
         api_key = self.config.get("api_key", "")
+        self.hub_ip = QLineEdit(hub_ip)
         self.device_field = QLineEdit(device_id)
         self.apikey_field = QLineEdit(api_key)  # visible
 
@@ -94,6 +96,7 @@ class IDSAgentUI(QWidget):
         ports_btn_layout.addWidget(remove_port_btn)
 
         # Assemble form
+        form_layout.addRow("HUB IP:", self.hub_ip)
         form_layout.addRow("Device ID:", self.device_field)
         form_layout.addRow("API Key:", self.apikey_field)
         form_layout.addRow(self.filemon_enabled)
@@ -138,6 +141,7 @@ class IDSAgentUI(QWidget):
 
     def save_config(self):
         cfg = {
+            "hub_ip": self.hub_field.text(),
             "device_id": self.device_field.text(),
             "api_key": self.apikey_field.text(),
             "file_monitor": {

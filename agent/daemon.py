@@ -1,15 +1,18 @@
-#!/usr/bin/env python3
 import os
 import json
 import uuid
 import time
 import yaml
 import subprocess
+import queue
 from datetime import datetime, timezone
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from threading import Thread
 from pathlib import Path
+from helper import send_event
+
+
 
 # === Paths & Config ===
 SCRIPT_DIR = Path(__file__).parent
@@ -28,6 +31,10 @@ DEVICE_ID = config.get("device_id", "agent-123")
 FILE_PATHS = [Path(p) for p in config.get("file_monitor", {}).get("paths", [])]
 FILE_MONITOR_ENABLED = config.get("file_monitor", {}).get("enabled", False)
 NETWORK_MONITOR_ENABLED = config.get("network_monitor", {}).get("enabled", False)
+HUB_URL = config.get("hub_url", "http://127.0.0.1:5000") + "/api/events"
+API_KEY = config.get("api_key", "")
+
+EVENT_QUEUE = queue.Queue()
 
 # === Helpers ===
 def utc_timestamp() -> str:
@@ -41,6 +48,35 @@ def save_event_locally(event_json: dict, is_file_event: bool):
         f.write(json.dumps(event_json) + "\n")
     
     print(f"[{'FILE' if is_file_event else 'NETWORK'} EVENT] {json.dumps(event_json)}")
+
+    EVENT_QUEUE.put(event_json)
+
+def event_sender_worker():
+    """Background worker to send events from the queue to the Hub."""
+    while True:
+        event_json = EVENT_QUEUE.get()  # blocks until item
+        try:
+            resp = send_event(
+                hub_url=HUB_URL,
+                device_id=DEVICE_ID,
+                api_key=API_KEY,
+                payload_dict=event_json
+            )
+            if resp:
+                print(f"[HUB] Event delivered, status={resp.status_code}")
+            else:
+                # Requeue event if failed
+                print("[HUB] Send failed, requeueing event")
+                EVENT_QUEUE.put(event_json)
+                time.sleep(5)  # backoff before retry
+        except Exception as e:
+            print(f"[ERROR] Unexpected in sender worker: {e}")
+            EVENT_QUEUE.put(event_json)
+            time.sleep(5)
+        finally:
+            EVENT_QUEUE.task_done()
+
+
 
 # === File Monitoring ===
 class FileEventHandler(FileSystemEventHandler):
@@ -98,6 +134,9 @@ def monitor_network_c(c_program_path: Path):
 def main():
     print("Daemon started (file + network monitoring).")
 
+    # Start sender worker thread
+    Thread(target=event_sender_worker, daemon=True).start()
+
     # File monitoring setup
     observers = []
     if FILE_MONITOR_ENABLED and FILE_PATHS:
@@ -122,6 +161,7 @@ def main():
         for obs in observers:
             obs.stop()
             obs.join()
+
 
 if __name__ == "__main__":
     main()

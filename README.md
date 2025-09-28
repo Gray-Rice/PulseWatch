@@ -27,6 +27,7 @@ POSTGRES_USER=user
 POSTGRES_PASSWORD=password
 POSTGRES_DB=ids_db
 POSTGRES_PORT=5432
+INTERNAL_SECRET=""
 ```
 
 Then start with compose

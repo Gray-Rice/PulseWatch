@@ -2,8 +2,12 @@ from flask import Blueprint, request, jsonify
 from app.models import db, Device
 import secrets
 import base64
+import os
 
 devices_bp = Blueprint("devices", __name__)
+
+# Load secret from environment or config file
+INTERNAL_SECRET = os.getenv("INTERNAL_SECRET", "super-secret-token")
 
 def generate_api_key():
     """
@@ -14,6 +18,11 @@ def generate_api_key():
 
 @devices_bp.route("/", methods=["POST"])
 def add_device():
+    # Secret check
+    auth = request.headers.get("X-Internal-Auth")
+    if auth != INTERNAL_SECRET:
+        return jsonify({"error": "Unauthorized"}), 403
+
     data = request.get_json()
     device_id = data.get("device_id")
     name = data.get("name", "Unnamed Device")
@@ -31,8 +40,6 @@ def add_device():
     db.session.add(device)
     db.session.commit()
     
-    
-    # Return API key to client securely
     return jsonify({
         "status": "device added",
         "device_id": device_id,
