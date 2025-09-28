@@ -9,20 +9,23 @@ from datetime import datetime, timezone
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from threading import Thread
+from pathlib import Path
 
 # === Paths & Config ===
-CONFIG_FILE = "agent.yaml"
-EVENT_DIR = "events"
+SCRIPT_DIR = Path(__file__).parent
+CONFIG_FILE = SCRIPT_DIR / "agent.yaml"
+EVENT_DIR = SCRIPT_DIR / "events"
+NET_MON = SCRIPT_DIR / "net_mon.bin"
 os.makedirs(EVENT_DIR, exist_ok=True)
 
-FILE_EVENTS_JSON = os.path.join(EVENT_DIR, "file_events.json")
-NETWORK_EVENTS_JSON = os.path.join(EVENT_DIR, "network_events.json")
+FILE_EVENTS_JSON = EVENT_DIR / "file_events.json"
+NETWORK_EVENTS_JSON = EVENT_DIR / "network_events.json"
 
 with open(CONFIG_FILE) as f:
     config = yaml.safe_load(f)
 
 DEVICE_ID = config.get("device_id", "agent-123")
-FILE_PATHS = config.get("file_monitor", {}).get("paths", [])
+FILE_PATHS = [Path(p) for p in config.get("file_monitor", {}).get("paths", [])]
 FILE_MONITOR_ENABLED = config.get("file_monitor", {}).get("enabled", False)
 NETWORK_MONITOR_ENABLED = config.get("network_monitor", {}).get("enabled", False)
 
@@ -34,15 +37,17 @@ def utc_timestamp() -> str:
 def save_event_locally(event_json: dict, is_file_event: bool):
     """Append JSON event to the correct local file."""
     filename = FILE_EVENTS_JSON if is_file_event else NETWORK_EVENTS_JSON
-    with open(filename, "a") as f:
+    with filename.open("a") as f:
         f.write(json.dumps(event_json) + "\n")
+    
+    print(f"[{'FILE' if is_file_event else 'NETWORK'} EVENT] {json.dumps(event_json)}")
 
 # === File Monitoring ===
 class FileEventHandler(FileSystemEventHandler):
     def on_any_event(self, event):
         if event.is_directory:
             return
-        if FILE_PATHS and not any(event.src_path.startswith(p) for p in FILE_PATHS):
+        if FILE_PATHS and not any(Path(event.src_path).resolve().is_relative_to(p.resolve()) for p in FILE_PATHS):
             return
 
         event_json = {
@@ -50,7 +55,7 @@ class FileEventHandler(FileSystemEventHandler):
             "device_id": DEVICE_ID,
             "type": "file_event",
             "details": {
-                "path": event.src_path,
+                "path": str(event.src_path),
                 "action": event.event_type,
                 "process": "unknown"
             },
@@ -59,14 +64,14 @@ class FileEventHandler(FileSystemEventHandler):
         save_event_locally(event_json, is_file_event=True)
 
 # === Network Monitoring via C Program ===
-def monitor_network_c(c_program_path: str = "./net_mon.bin"):
+def monitor_network_c(c_program_path: Path):
     """Launch the C network monitor and persist JSON events to file."""
-    if not os.path.isfile(c_program_path):
+    if not c_program_path.exists():
         print(f"[ERROR] C network monitor not found at {c_program_path}")
         return
 
     proc = subprocess.Popen(
-        [c_program_path],
+        [str(c_program_path)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -97,17 +102,17 @@ def main():
     observers = []
     if FILE_MONITOR_ENABLED and FILE_PATHS:
         for path in FILE_PATHS:
-            if not os.path.exists(path):
+            if not path.exists():
                 print(f"[WARNING] File path does not exist: {path}")
                 continue
             observer = Observer()
-            observer.schedule(FileEventHandler(), path=path, recursive=True)
+            observer.schedule(FileEventHandler(), path=str(path), recursive=True)
             observer.start()
             observers.append(observer)
 
     # Network monitoring setup
     if NETWORK_MONITOR_ENABLED:
-        Thread(target=monitor_network_c, args=("./net_mon.bin",), daemon=True).start()
+        Thread(target=monitor_network_c, args=(NET_MON,), daemon=True).start()
 
     try:
         while True:
