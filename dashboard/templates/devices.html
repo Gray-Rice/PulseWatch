@@ -2,16 +2,18 @@
 {% block content %}
 <style>
   :root {
-    /* Color system: 1 primary, neutrals, and 1 accent (max 5 colors) */
-    --brand: #0d3b66;         /* Primary: deep solar blue */
-    --accent: #f6c90e;        /* Accent: sun yellow */
-    --neutral-25: #f6f7f9;    /* Light neutral background */
+    /* Color system: security-focused palette */
+    --brand: #1e40af;         /* Primary: deep security blue */
+    --accent: #ef4444;        /* Accent: alert red */
+    --success: #10b981;       /* Success/safe green */
+    --warning: #f59e0b;       /* Warning orange */
+    --neutral-25: #f8fafc;    /* Light neutral background */
     --neutral-700: #334155;   /* Mid gray text/borders */
     --neutral-900: #0f172a;   /* Dark neutral text */
     --radius: 0.75rem;
   }
 
-  .solar-page {
+  .ids-page {
     background: var(--neutral-25);
     padding: 1.5rem;
     border-radius: var(--radius);
@@ -29,10 +31,10 @@
     font-size: 1.5rem;
     line-height: 1.2;
   }
-  .sun-icon {
+  .shield-icon {
     width: 28px;
     height: 28px;
-    color: var(--accent);
+    color: var(--brand);
     flex: none;
   }
   .subtle {
@@ -78,7 +80,7 @@
   }
   .input:focus {
     border-color: var(--brand);
-    box-shadow: 0 0 0 3px rgba(13, 59, 102, 0.15);
+    box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.15);
   }
 
   .btn {
@@ -96,15 +98,15 @@
     background: var(--brand);
     color: white;
   }
-  .btn-primary:hover { background: #0b3357; }
+  .btn-primary:hover { background: #1e3a8a; }
 
   .btn-danger {
-    background: #ef4444;
+    background: var(--accent);
     color: white;
   }
   .btn-danger:hover { background: #dc2626; }
 
-  /* Solar panel grid */
+  /* Node grid */
   .grid-header {
     display: flex;
     align-items: baseline;
@@ -117,7 +119,7 @@
     color: var(--neutral-900);
     font-size: 1.125rem;
   }
-  .panel-grid {
+  .node-grid {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -126,17 +128,17 @@
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
   @media (min-width: 640px) {
-    .panel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .node-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
   @media (min-width: 1024px) {
-    .panel-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .node-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 
-  .solar-card {
-    background: linear-gradient(0deg, #08324f, #0a4169); /* Subtle depth inside the card only */
+  .node-card {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
     color: white;
     border-radius: var(--radius);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     overflow: hidden;
     display: grid;
     gap: 0.75rem;
@@ -145,33 +147,40 @@
     isolation: isolate;
   }
 
-  /* Solar cell pattern */
-  .cell-pattern {
+  /* Network visualization */
+  .network-viz {
     position: relative;
     border-radius: calc(var(--radius) - 6px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background-color: rgba(2, 6, 23, 0.25);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(30, 64, 175, 0.05) 100%);
     height: 140px;
     overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  .cell-pattern::before {
-    /* Grid lines to simulate panel cells */
+  
+  .network-viz::before {
     content: "";
     position: absolute;
     inset: 0;
-    background-image:
-      linear-gradient(to right, rgba(255,255,255,0.12) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255,255,255,0.12) 1px, transparent 1px);
-    background-size: 28px 28px, 28px 28px;
-    pointer-events: none;
+    background-image: 
+      radial-gradient(circle at 2px 2px, rgba(16, 185, 129, 0.15) 1px, transparent 1px);
+    background-size: 20px 20px;
+    animation: scan 3s linear infinite;
   }
-  .busbar {
-    position: absolute;
-    top: 0; bottom: 0;
-    left: 25%; right: 25%;
-    border-left: 2px solid rgba(255,255,255,0.2);
-    border-right: 2px solid rgba(255,255,255,0.2);
+  
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  
+  .network-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--success);
     opacity: 0.8;
+    z-index: 1;
   }
 
   .top-row, .bottom-row {
@@ -184,9 +193,9 @@
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    background: rgba(246, 201, 14, 0.15);
-    color: #fde68a;
-    border: 1px solid rgba(246, 201, 14, 0.5);
+    background: rgba(16, 185, 129, 0.15);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.4);
     padding: 0.2rem 0.5rem;
     border-radius: 999px;
     font-size: 0.78rem;
@@ -219,7 +228,6 @@
     margin: 0;
   }
 
-  /* Config dump styling (if you re-enable it) */
   .dump {
     background: #0b1220;
     color: #e5e7eb;
@@ -228,80 +236,102 @@
     overflow: auto;
     border: 1px solid rgba(255,255,255,0.08);
   }
+
+  .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
 </style>
 
-<div class="solar-page" role="main" aria-labelledby="page-title">
+<div class="ids-page" role="main" aria-labelledby="page-title">
   <div class="header">
-    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="12" cy="12" r="4.5" fill="currentColor"></circle>
-      <g stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-        <path d="M12 2.5v3.5M12 18v3.5M2.5 12h3.5M18 12h3.5M4.7 4.7l2.5 2.5M16.8 16.8l2.5 2.5M19.3 4.7l-2.5 2.5M6.7 16.8l-2.5 2.5"></path>
-      </g>
+    <svg class="shield-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M12 2L4 6v5c0 5.5 3.8 10.7 8 12 4.2-1.3 8-6.5 8-12V6l-8-4z" 
+            stroke="currentColor" stroke-width="2" stroke-linejoin="round" fill="none"/>
+      <path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" 
+            stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
-    <h2 id="page-title">Device Management</h2>
+    <h2 id="page-title">Intrusion Detection System</h2>
   </div>
-  <p class="subtle">Manage solar panel devices in your grid. Add, review, or remove panels below.</p>
+  <p class="subtle">Manage monitored nodes in your network. Add, configure, or remove IDS sensors below.</p>
 
-  <div class="panel" aria-labelledby="add-panel-title">
-    <h3 id="add-panel-title" style="margin:0 0 0.75rem; color: var(--neutral-900); font-size:1.05rem;">Add Solar Panel</h3>
+  <div class="panel" aria-labelledby="add-node-title">
+    <h3 id="add-node-title" style="margin:0 0 0.75rem; color: var(--neutral-900); font-size:1.05rem;">Add Network Node</h3>
     <form class="add-form" method="POST" action="{{ url_for('add_device_route') }}">
       <div class="field">
-        <label for="device_name">Panel Name</label>
-        <input class="input" type="text" id="device_name" name="device_name" placeholder="e.g., Roof-East-01" required>
+        <label for="device_name">Node Name</label>
+        <input class="input" type="text" id="device_name" name="device_name" placeholder="e.g., Gateway-01" required>
       </div>
       <div class="field">
-        <label for="device_id">Panel ID</label>
-        <input class="input" type="text" id="device_id" name="device_id" placeholder="e.g., SP-9X2A-001" required>
+        <label for="device_id">Node ID</label>
+        <input class="input" type="text" id="device_id" name="device_id" placeholder="e.g., NODE-A1B2-001" required>
       </div>
-      <button class="btn btn-primary" type="submit" aria-label="Add solar panel">Add Panel</button>
+      <button class="btn btn-primary" type="submit" aria-label="Add network node">Add Node</button>
     </form>
   </div>
 
   <div class="grid-header">
-    <h3>Solar Array</h3>
-    <span class="subtle">{{ devices|length }} total</span>
+    <h3>Monitored Nodes</h3>
+    <span class="subtle">{{ devices|length }} active</span>
   </div>
 
-  <ul class="panel-grid" aria-live="polite">
+  <ul class="node-grid" aria-live="polite">
     {% for device in devices %}
       <li>
-        <article class="solar-card" aria-label="Solar panel card">
+        <article class="node-card" aria-label="Network node card">
           <div class="top-row">
-  <span class="badge" title="Panel ID">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="4" y="6" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.6"></rect>
-      <path d="M8 10.5h8M8 13.5h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
-    </svg>
-    {{ device.device_id }}
-  </span>
+            <span class="badge" title="Node ID">
+              <div class="status-indicator"></div>
+              {{ device.device_id }}
+            </span>
 
-  <div style="display:flex; gap:0.5rem;">
-    <!-- Kibana events button -->
-    <a class="btn btn-primary"
-       href="http://localhost:5601/app/discover#/ 
-             ?_a=(query:(language:lucene,query:'device_id:{{ device.device_id }}'))"
-       target="_blank"
-       aria-label="View events for {{ device.name }} in Kibana">
-      View Events
-    </a>
+            <div style="display:flex; gap:0.5rem;">
+              <!-- Kibana events button -->
+              <a class="btn btn-primary"
+                 href="http://localhost:5601/app/discover#/ 
+                       ?_a=(query:(language:lucene,query:'device_id:{{ device.device_id }}'))"
+                 target="_blank"
+                 aria-label="View events for {{ device.name }} in Kibana">
+                View Logs
+              </a>
 
-    <!-- Delete form -->
-    <form class="delete-form" method="POST" action="{{ url_for('delete_device_route', device_id=device.device_id) }}">
-      <button class="btn btn-danger" type="submit" aria-label="Delete panel {{ device.name }}">Delete</button>
-    </form>
-  </div>
-</div>
+              <!-- Delete form -->
+              <form class="delete-form" method="POST" action="{{ url_for('delete_device_route', device_id=device.device_id) }}">
+                <button class="btn btn-danger" type="submit" aria-label="Delete node {{ device.name }}">Remove</button>
+              </form>
+            </div>
+          </div>
+          
           <h4 class="name">{{ device.name }}</h4>
 
-          <div class="cell-pattern" aria-hidden="true">
-            <div class="busbar"></div>
+          <div class="network-viz" aria-hidden="true">
+            <svg class="network-icon" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+              <circle cx="12" cy="5" r="2" fill="currentColor"/>
+              <circle cx="12" cy="19" r="2" fill="currentColor"/>
+              <circle cx="5" cy="12" r="2" fill="currentColor"/>
+              <circle cx="19" cy="12" r="2" fill="currentColor"/>
+              <line x1="12" y1="9" x2="12" y2="7" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="12" y1="15" x2="12" y2="17" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="9" y1="12" x2="7" y2="12" stroke="currentColor" stroke-width="1.5"/>
+              <line x1="15" y1="12" x2="17" y2="12" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
           </div>
 
           <div class="bottom-row">
-            <div class="metrics" aria-label="Panel metrics">
-              <div class="metric"><span class="label">Status:</span>Active</div>
-              <div class="metric"><span class="label">Output:</span>— kW</div>
-              <div class="metric"><span class="label">Temp:</span>— °C</div>
+            <div class="metrics" aria-label="Node metrics">
+              <div class="metric"><span class="label">Status:</span>Monitoring</div>
+              <div class="metric"><span class="label">Threats:</span>0</div>
+              <div class="metric"><span class="label">Uptime:</span>—</div>
             </div>
           </div>
         </article>
@@ -309,7 +339,6 @@
     {% endfor %}
   </ul>
 
-  
   {% if config %}
     <h3 style="margin-top:1.25rem;color:var(--neutral-900);">Generated Config:</h3>
     <pre class="dump">{{ config }}</pre>

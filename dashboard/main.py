@@ -18,8 +18,22 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Import collector app, models, and helper
 from app import create_app
 from app.models import db, Device
-from user.helper import create_device
-
+# from user.helper import create_device
+def create_device(device_id, device_name):
+    """
+    Generate config and certs for a new device.
+    Replace this with Person B's real implementation.
+    """
+    config = {
+        "device_id": device_id,
+        "device_name": device_name,
+        "hub_url": "https://hub.example.com"
+    }
+    certs = {
+        "cert": f"-----BEGIN CERTIFICATE-----\n{device_id}-CERT\n-----END CERTIFICATE-----",
+        "key": f"-----BEGIN PRIVATE KEY-----\n{device_id}-KEY\n-----END PRIVATE KEY-----"
+    }
+    return config, certs
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
