@@ -31,9 +31,19 @@ DEVICE_ID = config.get("device_id", "agent-123")
 FILE_PATHS = [Path(p) for p in config.get("file_monitor", {}).get("paths", [])]
 FILE_MONITOR_ENABLED = config.get("file_monitor", {}).get("enabled", False)
 NETWORK_MONITOR_ENABLED = config.get("network_monitor", {}).get("enabled", False)
-HUB_URL = config.get("hub_url", "http://127.0.0.1:5000") + "/api/events"
-API_KEY = config.get("api_key", "")
+HUB_BASE_URL = config.get("hub_url", "http://127.0.0.1:5000")
 
+# Event endpoint
+EVENT_URL = HUB_BASE_URL + "/api/events/"
+
+API_KEY = config.get("api_key", "")
+DEVICE_ID = config.get("device_id", "agent-123")
+DEVICE_NAME = config.get("device_name", DEVICE_ID)
+
+if not API_KEY:
+    from client import fetch_api_key
+    # Use /api/devices/ for fetching API key
+    API_KEY = fetch_api_key(DEVICE_ID, DEVICE_NAME, HUB_BASE_URL, secret_token="super-secret-token")
 EVENT_QUEUE = queue.Queue()
 
 # === Helpers ===
@@ -57,7 +67,7 @@ def event_sender_worker():
         event_json = EVENT_QUEUE.get()  # blocks until item
         try:
             resp = send_event(
-                hub_url=HUB_URL,
+                hub_url=EVENT_URL,
                 device_id=DEVICE_ID,
                 api_key=API_KEY,
                 payload_dict=event_json
