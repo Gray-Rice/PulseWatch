@@ -25,8 +25,15 @@ services:
       - elasticsearch
     ports:
       - "5000:5000"
+  dashboard:
+    build: .
+    volumes:
+      - .:/app
+    ports:
       - "5001:5001"
     command: python /app/dashboard/main.py
+    depends_on:
+      - flask-app
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ES_LOCAL_VERSION}
     container_name: ${ES_LOCAL_CONTAINER_NAME}
@@ -90,7 +97,7 @@ services:
       - dev-kibana:/usr/share/kibana/data
       - ./config/telemetry.yml:/usr/share/kibana/config/telemetry.yml
     ports:
-      - 127.0.0.1:${KIBANA_LOCAL_PORT}:5601
+      - ${KIBANA_LOCAL_PORT}:5601
     environment:
       - SERVER_NAME=kibana
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
