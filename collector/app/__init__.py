@@ -1,5 +1,4 @@
 # app/__init__.py
-
 from flask import Flask
 from app.models import db
 from app.routes.events import events_bp
@@ -7,8 +6,8 @@ from app.routes.devices import devices_bp
 from elasticsearch import Elasticsearch
 import os
 
-def create_app(config_path=None,template_folder=None):
-    app = Flask(__name__,template_folder=template_folder)
+def create_app(config_path=None, template_folder=None):
+    app = Flask(__name__, template_folder=template_folder)
 
     # -----------------------------
     # Postgres config for devices
@@ -25,9 +24,9 @@ def create_app(config_path=None,template_folder=None):
     # -----------------------------
     # Elasticsearch config for events
     # -----------------------------
-    es_host = os.getenv("ES_HOST", "http://localhost:9200")
+    es_host = os.getenv("ES_HOST", "http://elasticsearch:9200")  # docker service name
     es_user = os.getenv("ES_USER", "elastic")
-    es_pass = os.getenv("ES_PASS", "changeme")
+    es_pass = os.getenv("ES_LOCAL_PASSWORD", "0Ji99IlL")  # default to your docker-compose password
 
     app.elasticsearch = Elasticsearch(
         hosts=[es_host],

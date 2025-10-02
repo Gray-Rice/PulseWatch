@@ -45,4 +45,4 @@ def add_device():
         "device_id": device_id,
         "name": device.name,
         "api_key": api_key
-    }), 201
+    }), 200

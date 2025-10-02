@@ -11,7 +11,7 @@ import base64, json
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.backends import default_backend
-
+import requests
 # Ensure project root importable
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -38,6 +38,21 @@ def create_device(device_id, device_name):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def add_device_via_api(device_id, device_name):
+    url = "http://127.0.0.1:5000/api/devices/"
+    headers = {
+        "X-Internal-Auth": os.getenv("INTERNAL_SECRET", "super-secret-token"),
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "device_id": device_id,
+        "name": device_name
+    }
+    resp = requests.post(url, json=payload, headers=headers)
+    if resp.status_code == 201:
+        return resp.json()  # contains device_id, name, api_key
+    else:
+        raise RuntimeError(f"Failed to add device via API: {resp.text}")
 # -----------------------------
 # Init Elasticsearch
 # -----------------------------
@@ -230,15 +245,15 @@ def create_dashboard_app():
         if existing_device:
             flash(f"Device with ID '{device_id}' already exists", "error")
             return redirect(url_for("devices"))
-
         try:
-            # Generate proper API key for encryption
-            api_key = generate_api_key()
-            
+            # Add device via API and get API key
+            device_info = add_device_via_api(device_id, device_name)
+            api_key = device_info["api_key"]
+
             # Create device configuration and certificates
             config, certs = create_device(device_id, device_name)
 
-            # Save device to database
+            # Save device locally in DB (optional, if needed)
             new_device = Device(device_id=device_id, name=device_name, api_key=api_key)
             db.session.add(new_device)
             db.session.commit()
@@ -258,7 +273,6 @@ def create_dashboard_app():
             logger.error(f"Error adding device: {e}")
             flash(f"Error adding device: {str(e)}", "error")
             return redirect(url_for("devices"))
-
     @app.route("/devices/delete/<device_id>", methods=["POST"])
     def delete_device_route(device_id):
         """Delete a device"""
@@ -445,7 +459,6 @@ def create_dashboard_app():
             
             # Check Elasticsearch
             es.ping()
-            
             return jsonify({
                 "status": "healthy",
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -470,4 +483,4 @@ def create_dashboard_app():
 if __name__ == "__main__":
     app = create_dashboard_app()
     logger.info("Starting dashboard application...")
-    app.run(host="0.0.0.0", port=5000, debug=os.getenv("DEBUG", "False").lower() == "true")
+    app.run(host="0.0.0.0", port=5001, debug=os.getenv("DEBUG", "False").lower() == "true")

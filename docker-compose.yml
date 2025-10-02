@@ -17,10 +17,16 @@ services:
       - .:/app  
     environment:
       DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      ES_HOST: "http://elasticsearch:9200"
+      ES_USER: "elastic"
+      ES_PASSWORD: "${ES_LOCAL_PASSWORD}"
     depends_on:
       - postgres
+      - elasticsearch
     ports:
       - "5000:5000"
+      - "5001:5001"
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:${ES_LOCAL_VERSION}
     container_name: ${ES_LOCAL_CONTAINER_NAME}
@@ -102,7 +108,6 @@ services:
       timeout: 10s
       retries: 30
 
-      
 volumes:
   dev-elasticsearch:
   dev-kibana:

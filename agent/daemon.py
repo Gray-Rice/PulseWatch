@@ -12,8 +12,6 @@ from threading import Thread
 from pathlib import Path
 from helper import send_event
 
-
-
 # === Paths & Config ===
 SCRIPT_DIR = Path(__file__).parent
 CONFIG_FILE = SCRIPT_DIR / "agent.yaml"
@@ -28,43 +26,34 @@ with open(CONFIG_FILE) as f:
     config = yaml.safe_load(f)
 
 DEVICE_ID = config.get("device_id", "agent-123")
+DEVICE_NAME = config.get("device_name", DEVICE_ID)
 FILE_PATHS = [Path(p) for p in config.get("file_monitor", {}).get("paths", [])]
 FILE_MONITOR_ENABLED = config.get("file_monitor", {}).get("enabled", False)
 NETWORK_MONITOR_ENABLED = config.get("network_monitor", {}).get("enabled", False)
 HUB_BASE_URL = config.get("hub_url", "http://127.0.0.1:5000")
-
-# Event endpoint
 EVENT_URL = HUB_BASE_URL + "/api/events/"
 
 API_KEY = config.get("api_key", "")
-DEVICE_ID = config.get("device_id", "agent-123")
-DEVICE_NAME = config.get("device_name", DEVICE_ID)
-
 if not API_KEY:
     from client import fetch_api_key
-    # Use /api/devices/ for fetching API key
     API_KEY = fetch_api_key(DEVICE_ID, DEVICE_NAME, HUB_BASE_URL, secret_token="super-secret-token")
+
 EVENT_QUEUE = queue.Queue()
 
 # === Helpers ===
 def utc_timestamp() -> str:
-    """Return current UTC time in ISO 8601 format with timezone info."""
     return datetime.now(timezone.utc).isoformat()
 
 def save_event_locally(event_json: dict, is_file_event: bool):
-    """Append JSON event to the correct local file."""
     filename = FILE_EVENTS_JSON if is_file_event else NETWORK_EVENTS_JSON
     with filename.open("a") as f:
         f.write(json.dumps(event_json) + "\n")
-    
     print(f"[{'FILE' if is_file_event else 'NETWORK'} EVENT] {json.dumps(event_json)}")
-
     EVENT_QUEUE.put(event_json)
 
 def event_sender_worker():
-    """Background worker to send events from the queue to the Hub."""
     while True:
-        event_json = EVENT_QUEUE.get()  # blocks until item
+        event_json = EVENT_QUEUE.get()
         try:
             resp = send_event(
                 hub_url=EVENT_URL,
@@ -75,18 +64,15 @@ def event_sender_worker():
             if resp:
                 print(f"[HUB] Event delivered, status={resp.status_code}")
             else:
-                # Requeue event if failed
                 print("[HUB] Send failed, requeueing event")
                 EVENT_QUEUE.put(event_json)
-                time.sleep(5)  # backoff before retry
+                time.sleep(5)
         except Exception as e:
             print(f"[ERROR] Unexpected in sender worker: {e}")
             EVENT_QUEUE.put(event_json)
             time.sleep(5)
         finally:
             EVENT_QUEUE.task_done()
-
-
 
 # === File Monitoring ===
 class FileEventHandler(FileSystemEventHandler):
@@ -99,7 +85,7 @@ class FileEventHandler(FileSystemEventHandler):
         event_json = {
             "id": str(uuid.uuid4()),
             "device_id": DEVICE_ID,
-            "type": "file_event",
+            "event_type": "file",  # <-- MUST match hub expectation
             "details": {
                 "path": str(event.src_path),
                 "action": event.event_type,
@@ -111,7 +97,6 @@ class FileEventHandler(FileSystemEventHandler):
 
 # === Network Monitoring via C Program ===
 def monitor_network_c(c_program_path: Path):
-    """Launch the C network monitor and persist JSON events to file."""
     if not c_program_path.exists():
         print(f"[ERROR] C network monitor not found at {c_program_path}")
         return
@@ -121,7 +106,7 @@ def monitor_network_c(c_program_path: Path):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        bufsize=1  # line-buffered
+        bufsize=1
     )
 
     for line in proc.stdout:
@@ -133,7 +118,7 @@ def monitor_network_c(c_program_path: Path):
             event_json.update({
                 "id": str(uuid.uuid4()),
                 "device_id": DEVICE_ID,
-                "type": "network_event",
+                "event_type": "network",  # <-- MUST match hub expectation
                 "timestamp": utc_timestamp()
             })
             save_event_locally(event_json, is_file_event=False)
@@ -143,11 +128,9 @@ def monitor_network_c(c_program_path: Path):
 # === Main Daemon ===
 def main():
     print("Daemon started (file + network monitoring).")
-
-    # Start sender worker thread
     Thread(target=event_sender_worker, daemon=True).start()
 
-    # File monitoring setup
+    # File monitoring
     observers = []
     if FILE_MONITOR_ENABLED and FILE_PATHS:
         for path in FILE_PATHS:
@@ -159,7 +142,7 @@ def main():
             observer.start()
             observers.append(observer)
 
-    # Network monitoring setup
+    # Network monitoring
     if NETWORK_MONITOR_ENABLED:
         Thread(target=monitor_network_c, args=(NET_MON,), daemon=True).start()
 
@@ -171,7 +154,6 @@ def main():
         for obs in observers:
             obs.stop()
             obs.join()
-
 
 if __name__ == "__main__":
     main()
