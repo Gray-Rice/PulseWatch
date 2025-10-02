@@ -46,6 +46,6 @@ if [ -z "${ES_LOCAL_LICENSE:-}" ] && [ "$today" -gt 1761054748 ]; then
 fi
 docker compose up --wait
 
-docker exec -it pulsewatch-flask-app-1 bash -c "\
-  cd /app/dashboard && \
-  python main.py"
+# docker exec -it pulsewatch-flask-app-1 bash -c "\
+#   cd /app/dashboard && \
+#   python main.py"
