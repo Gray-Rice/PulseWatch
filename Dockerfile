@@ -4,8 +4,8 @@ FROM python:3.13-slim
 WORKDIR /app/collector
 
 # Copy requirements first
-COPY collector/requirements.txt /app/collector/requirements.txt
-RUN pip install --no-cache-dir -r /app/collector/requirements.txt
+COPY req.txt /app/req.txt
+RUN pip install --no-cache-dir -r /app/req.txt
 
 # Copy entire collector folder
 COPY collector /app/collector

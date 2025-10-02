@@ -1,42 +1,38 @@
-# app/__init__.py
-from flask import Flask
-from app.models import db
-from app.routes.events import events_bp
-from app.routes.devices import devices_bp
+# dashboard/test_es_crud.py
+import time
+from app import create_app
 from elasticsearch import Elasticsearch
-import os
 
-def create_app(config_path=None, template_folder=None):
-    app = Flask(__name__, template_folder=template_folder)
+app = create_app()
 
-    # -----------------------------
-    # Postgres config for devices
-    # -----------------------------
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
-        "DATABASE_URL",
-        "postgresql://ids_user:ids_pass@localhost:5432/ids_db"
-    )
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-    # Initialize SQLAlchemy
-    db.init_app(app)
-
-    # -----------------------------
-    # Elasticsearch config for events
-    # -----------------------------
-    es_host = os.getenv("ES_HOST", "http://elasticsearch:9200")  # docker service name
-    es_user = os.getenv("ES_USER", "elastic")
-    es_pass = os.getenv("ES_PASSWORD", "0Ji99IlL")  # default to your docker-compose password
-
-    app.elasticsearch = Elasticsearch(
-        hosts=[es_host],
-        basic_auth=(es_user, es_pass)
+with app.app_context():
+    # Connect to Elasticsearch using the docker-compose service name
+    es = Elasticsearch(
+        ["http://elasticsearch:9200"],  # service name from docker-compose.yml
+        basic_auth=("elastic", "0Ji99IlL")  # replace with env var if you want
     )
 
-    # -----------------------------
-    # Register Blueprints
-    # -----------------------------
-    app.register_blueprint(events_bp, url_prefix="/api/events")
-    app.register_blueprint(devices_bp, url_prefix="/api/devices")
+    # Wait until ES is ready
+    for _ in range(10):
+        if es.ping():
+            break
+        print("Waiting for Elasticsearch to be ready...")
+        time.sleep(3)
+    else:
+        raise Exception("Elasticsearch not ready")
 
-    return app
+    # Test CRUD
+    doc = {"device_id": "123", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "124", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "125", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "126", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "127", "event_type": "network", "message": "Test event"}
+    doc = {"device_id": "128", "event_type": "network", "message": "Test event"}
+    res = es.index(index="network-events", document=doc)
+    print("Indexed:", res)
+
+    # retrieved = es.get(index="network-events", id=res["_id"])
+    # print("Retrieved:", retrieved["_source"])
+
+    # es.delete(index="network-events", id=res["_id"])
+    # print("Deleted document")
