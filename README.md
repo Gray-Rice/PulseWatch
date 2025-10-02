@@ -34,6 +34,13 @@ Then start with compose
 
 ./start.sh
 
+Dashboard http://127.0.0.1:5001/
+
+admin 
+admin
+
+default password
+
 Elasticsearch: Your Flask app’s backend search engine, accessible at http://localhost:9200.
 
 Kibana: Dashboard UI for Elasticsearch, accessible at http://localhost:5601.
@@ -43,8 +50,5 @@ Postgres: Your app’s relational database, accessible at localhost:5432.
 Flask app: Your main API backend, accessible at http://localhost:5000.
 Working Inside the Container
 
-All dependencies and services are pre-configured inside the Flask app container. To run tests or manage the app:
-
-docker exec -it pulsewatch-flask-app-1 bash
-
+All dependencies and services are pre-configured inside the Flask app container. 
 
