@@ -1,0 +1,3 @@
+watchdog
+PyQt6
+PyYAML
